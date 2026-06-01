@@ -1,0 +1,8 @@
+node_modules/
+database/
+settings.js
+lastBackup.json
+backupStats.json
+BACKUP-*.zip
+*.log
+.env
