@@ -4,6 +4,16 @@ const os = require("os");
 const { execSync } = require("child_process");
 
 // =============================================
+// HTML ESCAPE
+// =============================================
+function escapeHtml(text = "") {
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+// =============================================
 // INTERVAL PRESETS (ms)
 // =============================================
 const INTERVAL_PRESETS = {
@@ -341,10 +351,24 @@ class BackupManager {
       console.log(`✅ ZIP created: ${sizeFormatted}`);
 
       const serverInfo = this.getServerInfo();
-      const botInfo = await bot.getMe();
-      const waktuIndo = this.formatWaktuJakarta(nowDate);
+const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+
+const botInfo = await bot.getMe();
+const waktuIndo = this.formatWaktuJakarta(nowDate);
+const nextTime = new Date(now + this.intervalMs);
+const nextStr = this.formatWaktuJakarta(nextTime);
+
+const safeZipName = escapeHtml(zipName);
+const safeServerType = escapeHtml(serverInfo.serverType || "Unknown");
+const safeDiskInfo = escapeHtml(serverInfo.diskInfo || "Unknown");
+const safeSystemUptime = escapeHtml(serverInfo.systemUptime || "Unknown");
+const safeProcessUptime = escapeHtml(serverInfo.processUptime || "Unknown");
+const safeNextStr = escapeHtml(nextStr);
+const safeInterval = escapeHtml(this.intervalLabel);
+const safeAdminId = escapeHtml(String(adminId));
+const safeBotUsername = escapeHtml(botInfo.username || "unknown");
       
-      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      
       this.backupCount++;
       this.totalBackupSize += stats.size;
 
@@ -353,35 +377,41 @@ class BackupManager {
         ? (((this.backupCount - this.failedBackups) / this.backupCount) * 100).toFixed(1)
         : 100;
 
-      const nextTime = new Date(now + this.intervalMs);
-      const nextStr = this.formatWaktuJakarta(nextTime);
 
-      const captionText = 
-`📦 *AUTO BACKUP #${this.backupCount}*
+      const captionText =
+`📦 <b>AUTO BACKUP #${this.backupCount}</b>
 
 ⏰ ${waktuIndo}
-📁 ${zipName}
+📁 <code>${safeZipName}</code>
 📏 ${sizeFormatted} | ⚡ ${duration}s
 
-🖥️ *SERVER*
-${serverInfo.serverType}
-CPU: ${serverInfo.cpuCount} cores | RAM: ${serverInfo.usedMemGB}/${serverInfo.totalMemGB}GB (${serverInfo.memUsagePercent}%)
-Disk: ${serverInfo.diskInfo}
-Uptime: ${serverInfo.systemUptime} | Bot: ${serverInfo.processUptime}
+🖥️ <b>SERVER</b>
+${safeServerType}
+CPU: ${serverInfo.cpuCount} cores
+RAM: ${serverInfo.usedMemGB}/${serverInfo.totalMemGB}GB (${serverInfo.memUsagePercent}%)
+Disk: ${safeDiskInfo}
+Uptime: ${safeSystemUptime}
+Bot: ${safeProcessUptime}
 
-📊 *STATS*
-Total: ${this.backupCount} | Failed: ${this.failedBackups} | Rate: ${successRate}%
-Size: ${this.formatBytes(this.totalBackupSize)} | Avg: ${this.formatBytes(avgBackupSize)}
+📊 <b>STATISTIK</b>
+Total Backup: ${this.backupCount}
+Failed: ${this.failedBackups}
+Success Rate: ${successRate}%
 
-⏱ Interval: ${this.intervalLabel}
-📅 Backup berikutnya: ${nextStr}
-Owner: ${adminId} | Bot: @${botInfo.username || 'unknown'}`;
+Total Size: ${this.formatBytes(this.totalBackupSize)}
+Average: ${this.formatBytes(avgBackupSize)}
+
+⏱ Interval: ${safeInterval}
+📅 Backup Berikutnya: ${safeNextStr}
+
+👤 Owner: <code>${safeAdminId}</code>
+🤖 Bot: @${safeBotUsername}`;
 
       console.log(`📤 Sending to channel: ${targetChatId}...`);
       
       await bot.sendDocument(targetChatId, fs.createReadStream(zipFullPath), {
         caption: captionText,
-        parse_mode: "Markdown"
+        parse_mode: "HTML"
       });
 
       console.log("✅ Backup sent successfully!");
@@ -403,29 +433,38 @@ Owner: ${adminId} | Bot: @${botInfo.username || 'unknown'}`;
       this.saveStats();
 
       const serverInfo = this.getServerInfo();
-      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+const duration = ((Date.now() - startTime) / 1000).toFixed(2);
 
-      const errorMsg = 
-`⚠️ *BACKUP FAILED*
+const safeServerType = escapeHtml(serverInfo.serverType || "Unknown");
+const safeDiskInfo = escapeHtml(serverInfo.diskInfo || "Unknown");
+const safeInterval = escapeHtml(this.intervalLabel);
 
-❌ ${err.message}
-⏰ ${this.formatWaktuJakarta(new Date())}
+      const errorMsg =
+`⚠️ <b>BACKUP FAILED</b>
+
+❌ <code>${escapeHtml(err.message)}</code>
+
+⏰ ${escapeHtml(this.formatWaktuJakarta(new Date()))}
 ⚡ ${duration}s
 
-🖥️ ${serverInfo.serverType}
-RAM: ${serverInfo.usedMemGB}/${serverInfo.totalMemGB}GB
-Disk: ${serverInfo.diskInfo}
+🖥️ <b>${safeServerType}</b>
 
-📊 Total: ${this.backupCount} | Failed: ${this.failedBackups}
-⏱ Interval saat ini: ${this.intervalLabel}
+💾 RAM: ${serverInfo.usedMemGB}/${serverInfo.totalMemGB}GB
+💽 Disk: ${safeDiskInfo}
 
-Troubleshoot:
-• Pastikan command \`zip\` tersedia di server
+📊 <b>STATISTIK</b>
+• Total Backup : ${this.backupCount}
+• Backup Gagal : ${this.failedBackups}
+
+⏱ Interval : ${safeInterval}
+
+<b>Troubleshoot:</b>
+• Pastikan command <code>zip</code> tersedia di server
 • Cek permission file
 • Cek kapasitas disk`;
 
       try {
-        await bot.sendMessage(adminId, errorMsg, { parse_mode: "Markdown" });
+        await bot.sendMessage(adminId, errorMsg, { parse_mode: "HTML" });
       } catch (sendErr) {
         console.error("⚠️ Gagal kirim notifikasi error:", sendErr.message);
       }
@@ -471,7 +510,13 @@ Troubleshoot:
 
     const next = new Date(now + firstDelay);
     const nextStr = this.formatWaktuJakarta(next);
+    
     const serverInfo = this.getServerInfo();
+
+
+const safeServerType = escapeHtml(serverInfo.serverType || "Unknown");
+const safeDiskInfo = escapeHtml(serverInfo.diskInfo || "Unknown");
+const safeInterval = escapeHtml(this.intervalLabel);
 
     console.log(`\n╔═══════════════════════════════════════╗`);
     console.log(`║   🔄 AUTO BACKUP SYSTEM ACTIVATED    ║`);
